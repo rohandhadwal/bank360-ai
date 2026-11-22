@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets and local config
+.env
+
+# Generated data
+data/*
+!data/.gitkeep
+
+# dbt build output
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
+# Airflow runtime files
+airflow/logs/
+
+# Mac
+.DS_Store
