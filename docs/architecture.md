@@ -43,3 +43,16 @@ Python generator -> PostgreSQL (raw) -> dbt staging -> dbt marts -> CSV export -
 | Dev warehouse | PostgreSQL in Docker | Free, local, Snowflake-compatible SQL style |
 | Dashboards | Tableau Public instead of Metabase | Free, shareable portfolio link; needs a mart-to-CSV export step because it cannot connect to Postgres |
 | Docs | Three files only: `project.md`, `architecture.md`, `DEVLOG.md` | Keeps documentation lean and current |
+
+## 5. Local environment
+
+Defined in `docker-compose.yml`.
+
+| Service | Image | Port | Purpose |
+|---|---|---|---|
+| `postgres` | postgres:16 | 5432 | Warehouse holding the `raw`, `staging` and `marts` schemas |
+| `metabase` | metabase/metabase | 3000 | Dashboards that read from Postgres |
+
+- Credentials come from `.env` (git-ignored); `.env.example` is the committed template.
+- Named volumes (`postgres_data`, `metabase_data`) keep data when containers are removed.
+- Metabase stores its own settings in a local file database, which is fine for development.

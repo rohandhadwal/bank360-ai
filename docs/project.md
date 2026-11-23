@@ -48,7 +48,16 @@ Each metric below will be linked to the dbt model that computes it.
 
 ## 5. How to run it locally
 
-Not available yet. Will be added once docker-compose and the data generator exist.
+Prerequisite: Docker Desktop.
+
+```bash
+cp .env.example .env        # then edit .env with local credentials
+docker compose up -d        # starts Postgres (port 5432) and Metabase (port 3000)
+docker compose ps           # check both services are running
+docker compose down         # stop (data is kept in volumes)
+```
+
+Data generator, dbt and Airflow steps will be added as they are built.
 
 ## 6. Roadmap
 
