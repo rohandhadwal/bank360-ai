@@ -7,16 +7,24 @@ Newest entry first.
 **What we did**
 - Created `docker-compose.yml` defining two services: PostgreSQL 16 (the warehouse) and Metabase (dashboards)
 - Created `.env` (real credentials, ignored by git) and `.env.example` (committed template with fake values)
+- Created the `raw`, `staging` and `marts` schemas (`sql/01_create_schemas.sql`)
+- Decided the synthetic generator will inject realistic data quality problems (duplicates, nulls, inconsistent formats, orphan keys), documented in `docs/architecture.md`
+- Defined how real and official data (FRED, a public loan performance dataset) combines with synthetic data: calibration, benchmarking and context (see `docs/project.md`)
 - Persisted data in Docker volumes (`postgres_data`, `metabase_data`) so it survives container restarts
+- Started the stack and confirmed Postgres and Metabase run; connected VS Code to Postgres via the SQLTools extension
+- Created `sql/01_create_schemas.sql` and ran it: schemas `raw`, `staging` and `marts` now exist
 
 **Why**
+- Schemas separate data by stage (raw, staging, marts), so each layer has one clear job
+- A SQL file in the repo makes the database setup repeatable; `IF NOT EXISTS` makes it safe to re-run
 - Docker makes the environment reproducible: anyone can start the same stack with one command
+- Messy raw data gives the staging layer and dbt tests real work, mirroring production banking data
 - Keeping credentials in `.env` keeps secrets out of GitHub; `.env.example` documents what is needed
 - Volumes separate data from containers, so containers can be rebuilt without losing data
 
 **Next**
-- Run `docker compose up -d` and verify Postgres and Metabase start
-- Finalize the data model and create the `raw` schema
+- Define the raw tables (customers, accounts, loans, loan_payments, transactions) in SQL
+- Build the synthetic data generator
 
 ## 2026-11-21
 

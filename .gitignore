@@ -21,3 +21,5 @@ airflow/logs/
 
 # Mac
 .DS_Store
+# SQLTools scratch files
+*.session.sql

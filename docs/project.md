@@ -66,3 +66,20 @@ Data generator, dbt and Airflow steps will be added as they are built.
 - Data quality agent
 - Risk reporting agent
 - Core platform target: **Dec 17, 2026**
+
+## 7. Data sources
+
+| Source | Type | Purpose | Status |
+|---|---|---|---|
+| Synthetic generator (Python) | Synthetic | Linked customers, accounts, loans, payments, transactions with deliberate data quality issues | Planned Nov 24-30 |
+| FRED (Federal Reserve Economic Data) | Official, public | Benchmarks and context: fed funds rate, unemployment rate, credit card delinquency rate | Planned |
+| Loan performance dataset (Freddie Mac, or Lending Club as fallback) | Public | Calibrate credit score distribution and default rates in the generator | Planned |
+| Fraud dataset (ULB credit card fraud, Kaggle) | Public | Calibrate fraud rates and test fraud rules | Optional |
+
+**How real and synthetic data combine**
+
+- **Calibration:** real statistics set the generator's parameters so synthetic data behaves realistically.
+- **Benchmarking:** official series are loaded to their own `raw` tables and joined to marts (for example, portfolio delinquency vs the national rate).
+- **Context:** economic indicators sit beside loan performance.
+
+Real datasets use their own IDs, so they cannot be joined to synthetic customers directly. This is why they are used for calibration and benchmarking rather than row-level joins.
