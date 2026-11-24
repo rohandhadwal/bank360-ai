@@ -8,6 +8,10 @@ Newest entry first.
 - Created `docker-compose.yml` defining two services: PostgreSQL 16 (the warehouse) and Metabase (dashboards)
 - Created `.env` (real credentials, ignored by git) and `.env.example` (committed template with fake values)
 - Created the `raw`, `staging` and `marts` schemas (`sql/01_create_schemas.sql`)
+- Created the five raw tables, all TEXT columns plus `_loaded_at`, with no primary keys so duplicates can load (`sql/02_create_raw_tables.sql`)
+- Added `credit_score` to `raw.customers` (needed for credit risk analysis; values will be calibrated on real score distributions)
+- Set up a Python virtual environment and `requirements.txt` (faker, pandas, psycopg2-binary, python-dotenv), documented in `docs/project.md`
+- Planned how real and official datasets will be used: calibration and benchmarks (architecture.md section 7)
 - Decided the synthetic generator will inject realistic data quality problems (duplicates, nulls, inconsistent formats, orphan keys), documented in `docs/architecture.md`
 - Defined how real and official data (FRED, a public loan performance dataset) combines with synthetic data: calibration, benchmarking and context (see `docs/project.md`)
 - Persisted data in Docker volumes (`postgres_data`, `metabase_data`) so it survives container restarts

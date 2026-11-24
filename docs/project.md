@@ -23,6 +23,7 @@ In a typical bank, data lives in silos: customers, accounts, loans and transacti
 |---|---|---|
 | **Python** | Synthetic data generator, loading scripts | The standard language for data work; strong libraries (Faker, pandas) for realistic fake data |
 | **SQL** | Schema creation, analysis | The core skill for every data role; the warehouse logic is SQL |
+| **Python libraries** | `faker`, `pandas`, `psycopg2-binary`, `python-dotenv` | Faker creates realistic fake people and values; pandas builds and shapes tables of data; psycopg2 connects Python to Postgres; python-dotenv reads credentials from `.env` so no passwords are hardcoded |
 | **PostgreSQL** | Dev warehouse | Free, runs locally in Docker, and its SQL is close to Snowflake's, so the later move is easy |
 | **dbt** | Transformations (staging, marts), tests, docs | Turns SQL into version-controlled, tested, documented models with lineage. Industry standard for the "T" in ELT |
 | **Airflow** | Orchestration | Schedules and monitors the pipeline as a DAG with dependencies and retries; widely used in industry |
@@ -83,3 +84,22 @@ Data generator, dbt and Airflow steps will be added as they are built.
 - **Context:** economic indicators sit beside loan performance.
 
 Real datasets use their own IDs, so they cannot be joined to synthetic customers directly. This is why they are used for calibration and benchmarking rather than row-level joins.
+
+## 7. Python environment and libraries
+
+The project uses a virtual environment (`.venv`) so its packages stay separate from other projects on the machine. `requirements.txt` lists the packages, so anyone can recreate the same setup with `pip install -r requirements.txt`.
+
+| Library | What it does | Why we use it |
+|---|---|---|
+| `faker` | Generates realistic fake names, emails, phone numbers, addresses | Makes synthetic customers look real without using real personal data |
+| `pandas` | Holds data in tables (DataFrames) and transforms it | Quick way to build, shape and inject errors into generated data before loading |
+| `psycopg2-binary` | Python driver for PostgreSQL | Lets scripts connect to Postgres and load data |
+| `python-dotenv` | Reads settings from the `.env` file | Keeps passwords out of the code and out of GitHub |
+
+Setup commands:
+
+```bash
+python3 -m venv .venv          # create the isolated environment
+source .venv/bin/activate      # switch it on for this terminal session
+pip install -r requirements.txt
+```

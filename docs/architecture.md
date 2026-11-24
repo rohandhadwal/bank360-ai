@@ -24,7 +24,7 @@ Five tables. Every raw column is stored as `TEXT`, plus a `_loaded_at` timestamp
 
 | Table | One row per | Columns |
 |---|---|---|
-| `raw.customers` | Customer | customer_id, first_name, last_name, email, phone, date_of_birth, segment, country, signup_date, annual_income, is_test |
+| `raw.customers` | Customer | customer_id, first_name, last_name, email, phone, date_of_birth, segment, country, signup_date, annual_income, credit_score, is_test |
 | `raw.accounts` | Account | account_id, customer_id, account_type, open_date, close_date, status, balance, currency |
 | `raw.loans` | Loan | loan_id, customer_id, loan_type, principal, interest_rate, start_date, term_months, status |
 | `raw.loan_payments` | Scheduled payment | payment_id, loan_id, due_date, paid_date, amount_due, amount_paid |
