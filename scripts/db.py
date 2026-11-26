@@ -1,7 +1,7 @@
-import os
+import os  # built-in: read environment variables
 
-import psycopg2
-from dotenv import load_dotenv
+import psycopg2  # Python driver for PostgreSQL
+from dotenv import load_dotenv  # loads settings from the .env file
 
 load_dotenv()  # reads the .env file
 

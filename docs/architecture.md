@@ -1,90 +1,159 @@
-# Architecture and Data Schema
+# Architecture
 
-> Maintained by Claude as the project evolves. Last updated: 2026-11-21.
-> Status: **design stage**. Raw tables are final for version 1; marts are still a draft.
+Bank 360 AI is a data platform for a fictional retail bank. It brings customer, account, loan and transaction data into one governed warehouse to support Customer 360, credit risk analytics and fraud monitoring.
 
-## 1. Data flow
+## 1. System overview
 
+```mermaid
+flowchart LR
+    subgraph Sources
+        G["Python synthetic data generator"]
+        P["Public and official datasets"]
+    end
+
+    subgraph WH["PostgreSQL (Docker)"]
+        R["raw schema"] -->|dbt| S["staging schema"] -->|dbt| M["marts schema"]
+    end
+
+    G --> R
+    P --> R
+    M --> B["Metabase dashboards"]
+    A["Airflow orchestration"] -.->|schedules and monitors| WH
+    CI["GitHub Actions CI"] -.->|checks on every push| WH
 ```
-Python generator -> PostgreSQL (raw) -> dbt staging -> dbt marts -> CSV export -> Tableau Public
-  (synthetic data)   (untouched copy)   (clean, typed)  (business logic)  (script)     (dashboards)
-                                  ^
-                          Airflow runs and monitors every step
-```
+
+| Component | Role |
+|---|---|
+| Python | Generates linked synthetic bank data and loads it into `raw` |
+| PostgreSQL | Warehouse (development); runs in Docker |
+| dbt | Transforms `raw` into clean `staging` models and business-ready `marts`, with tests |
+| Airflow | Orchestrates the pipeline end to end |
+| Metabase | Dashboards for Customer 360, credit risk and fraud monitoring |
+| GitHub Actions | Automated checks on every push |
+
+## 2. Data layers
 
 | Layer | Schema | What happens | Why |
 |---|---|---|---|
-| Raw | `raw` | Data loaded exactly as generated | Audit trail; can always re-run transformations |
-| Staging | `staging` | Rename columns, fix types, light cleaning | One clean version of each source table |
-| Marts | `marts` | Joins and business metrics | What analysts and dashboards actually use |
+| Raw | `raw` | Data loaded exactly as received, all columns as text | Audit trail; transformations can always be re-run |
+| Staging | `staging` | Rename columns, fix types, deduplicate, standardize values | One clean version of each source table |
+| Marts | `marts` | Joins and business metrics | What analysts and dashboards use |
 
-## 2. Raw tables (version 1)
+The platform follows an ELT pattern: load first, transform inside the warehouse. All cleaning is done in versioned, tested dbt SQL, so every number can be traced back to its source.
 
-Five tables. Every raw column is stored as `TEXT`, plus a `_loaded_at` timestamp, because real source extracts arrive untyped and messy. Typing and cleaning happen in staging, never in raw.
+## 3. Data schema (raw layer)
 
-| Table | One row per | Columns |
-|---|---|---|
-| `raw.customers` | Customer | customer_id, first_name, last_name, email, phone, date_of_birth, segment, country, signup_date, annual_income, credit_score, is_test |
-| `raw.accounts` | Account | account_id, customer_id, account_type, open_date, close_date, status, balance, currency |
-| `raw.loans` | Loan | loan_id, customer_id, loan_type, principal, interest_rate, start_date, term_months, status |
-| `raw.loan_payments` | Scheduled payment | payment_id, loan_id, due_date, paid_date, amount_due, amount_paid |
-| `raw.transactions` | Transaction | transaction_id, account_id, txn_timestamp, amount, txn_type, merchant_category, channel, country |
+```mermaid
+erDiagram
+    CUSTOMERS ||--o{ ACCOUNTS : owns
+    CUSTOMERS ||--o{ LOANS : borrows
+    LOANS ||--o{ LOAN_PAYMENTS : "repaid by"
+    ACCOUNTS ||--o{ TRANSACTIONS : records
 
-Relationships: customer 1-to-many accounts and loans; loan 1-to-many loan_payments; account 1-to-many transactions. Fraud labels are not stored in raw; the fraud mart derives risk flags from rules.
+    CUSTOMERS {
+        text customer_id PK
+        text first_name
+        text last_name
+        text email
+        text phone
+        text date_of_birth
+        text segment
+        text country
+        text signup_date
+        text annual_income
+        text credit_score
+        text is_test
+    }
+    ACCOUNTS {
+        text account_id PK
+        text customer_id FK
+        text account_type
+        text open_date
+        text close_date
+        text status
+        text balance
+        text currency
+    }
+    LOANS {
+        text loan_id PK
+        text customer_id FK
+        text loan_type
+        text principal
+        text interest_rate
+        text start_date
+        text term_months
+        text status
+    }
+    LOAN_PAYMENTS {
+        text payment_id PK
+        text loan_id FK
+        text due_date
+        text paid_date
+        text amount_due
+        text amount_paid
+    }
+    TRANSACTIONS {
+        text transaction_id PK
+        text account_id FK
+        text txn_timestamp
+        text amount
+        text txn_type
+        text merchant_category
+        text channel
+        text country
+    }
+```
 
-## 3. Planned marts (draft)
+Every raw table also has a `_loaded_at` timestamp. Raw columns are stored as text, with no database-enforced keys, because real source extracts arrive untyped and may contain duplicates. The keys shown above are logical relationships that dbt tests enforce in staging.
 
-- `customer_360`: one row per customer with accounts, balances, loans and activity
-- Credit risk mart: loan-level delinquency bucket and portfolio default rate
-- Fraud mart: flagged transactions and risk signals per customer
+| Table | One row per |
+|---|---|
+| `customers` | Customer |
+| `accounts` | Account (checking, savings or credit card) |
+| `loans` | Loan (personal, auto or mortgage) |
+| `loan_payments` | Scheduled loan payment |
+| `transactions` | Account transaction |
 
-## 4. Design decisions
+## 4. Marts (planned)
+
+- **Customer 360:** one row per customer with accounts, balances, loans and activity.
+- **Credit risk:** loan-level delinquency buckets and portfolio default rate.
+- **Fraud monitoring:** flagged transactions and risk signals per customer.
+
+## 5. Data quality approach
+
+The synthetic data intentionally includes real-world problems: duplicate rows, missing values, inconsistent formats and categories, orphaned keys, invalid values and test accounts. Staging models fix these, and dbt tests (`unique`, `not_null`, `relationships`, `accepted_values`) verify the result. Raw tables are never modified.
+
+## 6. Data sources
+
+- **Synthetic data:** generated with Python and Faker so IDs link across tables. Distributions (credit scores, default rates, fraud rates) are calibrated against public data.
+- **Public and official data (planned):** Federal Reserve (FRED) benchmark series and a public loan performance dataset, loaded as separate reference tables for benchmarking.
+
+## 7. Design decisions
 
 | Decision | Choice | Reason |
 |---|---|---|
-| Project name | Bank 360 AI (repo `bank360-ai`) | Does not depend on a final fictional bank name |
 | Load pattern | ELT with a `raw` schema | Auditability and reproducibility |
-| Dev warehouse | PostgreSQL in Docker | Free, local, Snowflake-compatible SQL style |
-| Dashboards | Tableau Public instead of Metabase | Free, shareable portfolio link; needs a mart-to-CSV export step because it cannot connect to Postgres |
-| Docs | Three files only: `project.md`, `architecture.md`, `DEVLOG.md` | Keeps documentation lean and current |
+| Development warehouse | PostgreSQL in Docker | Free, local, and close to Snowflake's SQL |
+| Orchestration | Airflow | Dependencies, retries and monitoring for pipeline steps |
+| Transformation | dbt | Version-controlled, tested, documented SQL models with lineage |
+| Dashboards | Metabase | Free, open source, connects live to Postgres |
+| Environment | Docker Compose | One command starts the stack on any machine |
 
-## 5. Local environment
+## 8. Local environment
 
 Defined in `docker-compose.yml`.
 
 | Service | Image | Port | Purpose |
 |---|---|---|---|
 | `postgres` | postgres:16 | 5432 | Warehouse holding the `raw`, `staging` and `marts` schemas |
-| `metabase` | metabase/metabase | 3000 | Dashboards that read from Postgres |
+| `metabase` | metabase/metabase | 3000 | Dashboards reading from Postgres |
 
-- Credentials come from `.env` (git-ignored); `.env.example` is the committed template.
-- Named volumes (`postgres_data`, `metabase_data`) keep data when containers are removed.
-- Metabase stores its own settings in a local file database, which is fine for development.
+Credentials are read from `.env` (not committed); `.env.example` is the template. Named volumes keep data when containers are removed.
 
-## 6. Deliberately messy raw data
+## 9. Roadmap
 
-The generator will inject real-world data problems into `raw`, so the staging layer has real cleaning work and dbt tests catch real issues. Each problem is tracked here and mapped to the fix.
-
-| Problem in raw | Real-world cause | Fix in staging / test |
-|---|---|---|
-| Duplicate rows (same ID twice) | Source system retries or double loads | Deduplicate, keep latest; `unique` test |
-| Missing values (null email, DOB, income) | Optional form fields, system gaps | Standardize nulls; `not_null` tests where required |
-| Inconsistent formats (dates as text in mixed formats, phone formats) | Different source systems | Cast and standardize types |
-| Inconsistent categories ("Checking", "checking ", "CHK") | Manual entry, legacy codes | Trim, lowercase, map to a standard list; `accepted_values` test |
-| Orphan keys (transaction for a missing account) | Late or partial loads | `relationships` test; flag or exclude |
-| Invalid values (negative principal, future birth date) | Entry errors | Filter or flag; range tests |
-| Late-arriving and out-of-order records | Batch delays | Use event vs load timestamps correctly |
-| Test or internal accounts mixed in | Left over from system testing | Exclude by rule |
-
-Raw tables are never edited. All cleaning happens in dbt, so every change is visible and traceable.
-
-## 7. Real and official data (planned, Nov 24-30 and later)
-
-No public dataset contains a whole bank's linked customers, accounts, loans and transactions, so the synthetic data is the bank's own internal data. Real and official data play two other roles:
-
-| Role | Source examples | How it is used |
-|---|---|---|
-| Calibration | Public loan performance data (e.g. Lending Club), public labeled fraud data (e.g. ULB credit card fraud) | Shape the generator: realistic credit score distribution, default rates by score band, fraud rate. Optionally loaded into their own `raw` tables |
-| Official benchmarks | Federal Reserve / FRED delinquency and charge-off rates, CFPB complaints database, FDIC bank statistics | Loaded as separate `raw` reference tables. A mart compares our portfolio against the national benchmark |
-
-Check each dataset's license and terms before use. Final dataset choices will be recorded here.
+- Snowflake deployment
+- Text-to-SQL agent
+- Data quality agent
+- Risk reporting agent

@@ -23,3 +23,7 @@ airflow/logs/
 .DS_Store
 # SQLTools scratch files
 *.session.sql
+
+# Personal notes (not for GitHub)
+docs/project.md
+docs/DEVLOG.md
